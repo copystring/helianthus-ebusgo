@@ -115,3 +115,49 @@ func TestVR92Target_B509SelectorBehavior(t *testing.T) {
 		t.Fatalf("Frame data = %x; want %x", response.Frame.Data, wantChunk)
 	}
 }
+
+func TestNewVR92Target_HasVR92NameAndIdentityOnlyByDefault(t *testing.T) {
+	t.Parallel()
+
+	target, err := NewVR92Target(defaultVR92TestProfile())
+	if err != nil {
+		t.Fatalf("NewVR92Target() error = %v", err)
+	}
+	if target.Name != "vr92-minimal-0x35" {
+		t.Fatalf("Target name = %q; want vr92-minimal-0x35", target.Name)
+	}
+
+	_, err = target.Emulate(RequestEvent{
+		Frame: protocol.Frame{
+			Source:    0x10,
+			Target:    testVR92Address,
+			Primary:   0xB5,
+			Secondary: 0x0A,
+			Data:      []byte{0x00},
+		},
+	})
+	if !errors.Is(err, ErrNoMatchingRule) {
+		t.Fatalf("Unverified room-temperature command error = %v; want %v", err, ErrNoMatchingRule)
+	}
+}
+
+func TestVR92Target_B509DiscoveryDisabledWithoutEvidence(t *testing.T) {
+	t.Parallel()
+
+	target, err := NewVR92Target(defaultVR92TestProfile())
+	if err != nil {
+		t.Fatalf("NewVR92Target() error = %v", err)
+	}
+	_, err = target.Emulate(RequestEvent{
+		Frame: protocol.Frame{
+			Source:    0x10,
+			Target:    testVR92Address,
+			Primary:   0xB5,
+			Secondary: 0x09,
+			Data:      []byte{0x24},
+		},
+	})
+	if !errors.Is(err, ErrNoMatchingRule) {
+		t.Fatalf("Default B509 discovery error = %v; want %v", err, ErrNoMatchingRule)
+	}
+}
