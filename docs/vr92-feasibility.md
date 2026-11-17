@@ -49,3 +49,39 @@ Offline development is intentionally stopped at the boundary of unverified wire 
 ### Release gate
 
 Do not release an installable, live-bus-enabled artifact until a trace proves the actual VR92-to-controller temperature transfer, the gateway's responder timing is verified for the installed adapter, and the VRC720/3 accepts a remote room sensor for zone 1 under system schema 8. A physical VR92 test unit or an independently authenticated capture would resolve the largest uncertainty.
+
+## Dynamic VR92 room responder scaffold
+
+`NewVR92RoomTarget(profile, sensor, mapping, clock)` now creates an **in-memory**
+VR92 target that retains identification but reads the current room temperature
+for each matched request. It needs four inputs:
+
+- an explicit VR92 target profile (with an address selected after checking for collisions);
+- `VR92RoomSensor`, updated by the caller with timestamped observations;
+- a **verified** primary/secondary command and exact request payload, plus an
+  encoder for the confirmed response format;
+- a clock function for deterministic freshness checks in tests.
+
+Without a qualified mapping and encoder, the constructor returns
+`ErrInvalidConfiguration`. It deliberately ships with **no default VR92
+temperature command or encoder**. The current tests use invented, synthetic
+bytes and must not be interpreted as Vaillant wire evidence.
+
+The responder returns an error instead of a payload when a source reading is
+missing, stale, future-dated, invalidated or cannot be encoded. It never
+substitutes the last valid value after expiry. It forbids replacing the
+identity command, the scan-ID selector range, or overlapping static reply
+mappings.
+
+This is only the temperature-dependent **answer** side. Actual hardware
+requires verified wire messages, a responder-capable adapter path, ACK/CRC
+handling and potentially autonomous initiator traffic. It cannot be deployed
+simply by installing this Go library into the ebusd or Helianthus HA add-on.
+
+### Why real traces are still needed
+
+The public `GG0x0A_OP0x06.json` has an observed
+`instance=1, addr=0x000F, full_payload_hex=010a0f0000005a41`, which
+decodes to 13.625°C. This is the VRC controller's register view, not a
+documented remote-origin frame. Even the correct dynamic response might not
+cause the VRC 720/3 to assign a VR92 to its sole zone in systemschema 8.
