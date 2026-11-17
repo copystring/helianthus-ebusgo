@@ -71,7 +71,12 @@ func NewVR92Target(profile VR92Profile) (*Target, error) {
 		return nil, err
 	}
 
-	return NewVR90Target(VR90Profile(normalized))
+	target, err := NewVR90Target(VR90Profile(normalized))
+	if err != nil {
+		return nil, err
+	}
+	target.Name = fmt.Sprintf("vr92-minimal-0x%02x", normalized.Address)
+	return target, nil
 }
 
 func normalizeVR92Profile(profile VR92Profile) (VR92Profile, error) {

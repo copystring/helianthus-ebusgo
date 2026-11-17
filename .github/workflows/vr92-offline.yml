@@ -1,0 +1,25 @@
+name: VR92 offline proof
+
+on:
+  push:
+    branches:
+      - feat/vr92-emulation-proof-20261117
+  pull_request:
+
+jobs:
+  vr92-offline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Run VR92 emulator and room-sensor tests
+        run: go test -race -count=1 ./emulation
+      - name: Verify Go code
+        run: |
+          go vet ./emulation
+          go build ./emulation
